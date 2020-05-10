@@ -10,6 +10,7 @@
 #include <warden>
 #include <basecomm>
 #include <clientprefs>
+#include <cstrike>
 
 #undef REQUIRE_PLUGIN
 #include <sourcecomms>
@@ -19,18 +20,21 @@ Player g_Players[MAXPLAYERS + 1];
 ArrayList g_Entities;
 ArrayList g_Lasers;
 int g_FriendlyFire;
-int g_SpecialDay;
-bool g_Invulnerability;
 int g_Render;
+
+SpecialDay g_Spec;
 
 Models g_Models;
 ArrayList g_Beacons;
+ArrayList g_AllowedPickup;
 bool g_SourceCommsEnabled;
 Cookie g_BeaconCookie;
 ConVar g_cFriendlyFire;
 UserMsg g_FadeUserMsgId;
 
 int m_flNextSecondaryAttack = -1;
+int g_roundStartedTime = -1;
+int g_offsCollisionGroup;
 
 public Plugin myinfo = {
 	name = "Warden",
@@ -62,6 +66,7 @@ public void OnPluginStart() {
 	HookEvent("round_start", Hook_RoundStart);
 	HookEvent("round_end", Hook_RoundEnd);
 	HookEvent("player_death", Hook_PlayerDeath);
+	HookEvent("player_spawn", Hook_PlayerSpawn);
 
 	RegConsoleCmd("+beacon", Command_Beacon);
 	RegConsoleCmd("-beacon", Command_Beacon);
@@ -87,13 +92,14 @@ public void OnPluginStart() {
 	g_Beacons = new ArrayList(sizeof(Beacon));
 	g_Entities = new ArrayList(sizeof(Entity));
 	g_Lasers = new ArrayList(sizeof(Laser));
+	g_AllowedPickup = new ArrayList();
 	g_BeaconCookie = new Cookie("warden_beacon", "Saves	 the preference for beacon", CookieAccess_Protected);
 	g_FadeUserMsgId = GetUserMessageId("Fade");
 	g_cFriendlyFire = FindConVar("mp_friendlyfire");
 	g_cFriendlyFire.SetBool(true, false, false);
 	g_cFriendlyFire.AddChangeHook(Hook_ConVar);
 	m_flNextSecondaryAttack = FindSendPropInfo("CBaseCombatWeapon", "m_flNextSecondaryAttack");
-
+	g_offsCollisionGroup = FindSendPropInfo("CBaseEntity", "m_CollisionGroup");
 
 	for (int i = 1; i <= MaxClients; i++) {
 		if (!IsValidPlayer(i)) continue;
@@ -106,6 +112,11 @@ public void OnPluginStart() {
 		SDKHook(i, SDKHook_SetTransmit, Hook_SetTransmit);
 		SDKHook(i, SDKHook_PreThink, Hook_PreThink);
 	}
+}
+
+public Action Hook_PlayerSpawn(Event event, const char[] name, bool bDontBroadcast) {
+	int client = GetClientOfUserId(event.GetInt("userid"));
+	SetEntData(client, g_offsCollisionGroup, 2, 4, true);
 }
 
 public Action Command_Test(int client, int args) {
@@ -182,8 +193,11 @@ public void OnClientDisconnect(int client) {
 }
 
 public Action Hook_WeaponCanUse(int client, int weapon) {
-	switch (g_SpecialDay) {
-		case SpecialDay_HungerGames, SpecialDay_Chamber, SpecialDay_AWP: return Plugin_Handled;
+	switch (g_Spec.Type) {
+		case SpecialDay_Chamber: return Plugin_Handled;
+		case SpecialDay_HungerGames: {
+			if (g_AllowedPickup.FindValue(weapon) == -1) return Plugin_Handled;
+		}
 	}
 
 	return Plugin_Continue;
@@ -191,19 +205,21 @@ public Action Hook_WeaponCanUse(int client, int weapon) {
 
 public Action Hook_OnTakeDamage(int victim, int& attacker, int& inflictor, float& damage, int& damagetype) {
 	if (attacker == 0) return Plugin_Continue;
-	if (g_Invulnerability) return Plugin_Handled;
+	if (g_Spec.Type != SpecialDay_None && g_Spec.Invulnerability) return Plugin_Handled;
 
-	if (g_SpecialDay != SpecialDay_None) {
-		switch (g_SpecialDay) {
+	int victimTeam = GetClientTeam(victim);
+	int attackerTeam = GetClientTeam(attacker);
+
+	if (g_Spec.Type != SpecialDay_None) {
+		switch (g_Spec.Type) {
 			case SpecialDay_Chamber: {
-				damage = 1337;
+				damage = 1337.0;
 				return Plugin_Changed;
+			} case SpecialDay_TDM: {
+				if (g_Players[victim].Team == g_Players[attacker].Team) return Plugin_Handled;
 			}
 		}
 	} else {
-		int victimTeam = GetClientTeam(victim);
-		int attackerTeam = GetClientTeam(attacker);
-
 		switch (g_FriendlyFire) {
 			case FriendlyFire_Off: {
 				if (victimTeam == attackerTeam) return Plugin_Handled;
@@ -223,12 +239,12 @@ public Action Hook_OnTakeDamage(int victim, int& attacker, int& inflictor, float
 }
 
 public Action Hook_SetTransmit(int entity, int client) {
-	if (g_Invulnerability && entity != client) return Plugin_Handled;
+	if (g_Spec.Invisibility && entity != client) return Plugin_Handled;
 	return Plugin_Continue;
 }
 
 public Action Hook_PreThink(int client) {
-	if (g_SpecialDay == SpecialDay_AWP) {
+	if (g_Spec.Type == SpecialDay_AWP) {
 		int weapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
 		if (!IsValidEdict(weapon)) return Plugin_Continue;
 
@@ -273,11 +289,19 @@ public Action Hook_RoundStart(Event event, const char[] name, bool dontBroadcast
 	UnsetWarden();
 
 	g_FriendlyFire = 0;
-	g_Invulnerability = false;
-	g_SpecialDay = SpecialDay_None;
 	g_Entities.Clear();
 	g_Lasers.Clear();
+	g_AllowedPickup.Clear();
 	ClearTeams();
+
+	SpecialDay newSpecialDay;
+	g_Spec = newSpecialDay;
+
+	for (int i = 1; i <= MaxClients; i++) {
+		g_Players[i].Kills = 0;
+	}
+
+	g_roundStartedTime = GetTime();
 }
 
 public Action Hook_RoundEnd(Event event, const char[] name, bool dontBroadcast) {
@@ -295,12 +319,12 @@ public Action Hook_PlayerDeath(Event event, const char[] name, bool dontBroadcas
 	int client = GetClientOfUserId(event.GetInt("userid"));
 	if (g_Warden.Id == client) UnsetWarden(true);
 
-	if (g_SpecialDay == SpecialDay_Chamber) {
+	if (g_Spec.Type == SpecialDay_Chamber) {
 		int attacker = GetClientOfUserId(event.GetInt("attacker"));
 
 		if (IsValidPlayer(attacker)) {
 			int weapon = GetPlayerWeaponSlot(attacker, 1);
-			SetEntProp(weapon, Prop_Send, "m_iPrimaryReserveAmmoCount", 1);
+			if (weapon != -1) SetEntProp(weapon, Prop_Send, "m_iPrimaryReserveAmmoCount", 1);	
 		}
 	}
 }
@@ -313,6 +337,7 @@ public Action Hook_GlowTransmit(int entity, int client) {
 	SplitString(buffer, ":", emitter, 2);
 
 	if (g_Players[StringToInt(emitter)].Team != g_Players[client].Team) return Plugin_Handled;
+	if (g_Spec.Invisibility) return Plugin_Handled;
 	return Plugin_Continue;
 }
 
@@ -410,9 +435,9 @@ Action Timer_Main(Handle timer, any data) {
 						lowIndex = i;
 						lowDistance = distance;
 					}
-
-					PrintToChatAll("%s\x06Highest: \x10%N \x01%.3fu \x07Lowest: \x10%N \x01%.3fu", PLUGIN_PREFIX, highIndex, highDistance, lowIndex, lowDistance);
 				}
+
+				PrintToChatAll("%s\x06Highest: \x10%N \x01%.3fu \x07Lowest: \x10%N \x01%.3fu", PLUGIN_PREFIX, highIndex, highDistance, lowIndex, lowDistance);
 			}
 		}
 

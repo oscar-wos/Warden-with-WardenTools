@@ -8,7 +8,8 @@ enum {
 	WardenTool_Laser,
 	WardenTool_Shark,
 	WardenTool_Blind,
-	WardenTool_FreezeJump
+	WardenTool_FreezeJump,
+	WardenTool_SetSpawn
 }
 
 enum {
@@ -16,6 +17,7 @@ enum {
 	SpecialDay_HungerGames,
 	SpecialDay_Chamber,
 	SpecialDay_TDM,
+	SpecialDay_FFA,
 	SpecialDay_AWP,
 	SpecialDay_War,
 	SpecialDay_Hide,
@@ -47,6 +49,16 @@ enum struct Player {
 	int SlapsRemaining;
 
 	int BeaconPref;
+	int Kills;
+}
+
+enum struct SpecialDay {
+	float Pos[3];
+	int Entity;
+	int Started;
+	int Type;
+	bool Invisibility;
+	bool Invulnerability;
 }
 
 enum struct Warden {
