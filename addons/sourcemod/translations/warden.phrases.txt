@@ -1,0 +1,437 @@
+"Phrases"
+{
+	"warden_tools"
+	{
+		"en" "Warden Tools"
+	}
+
+	"team_picker"
+	{
+		"en" "Team Picker"
+	}
+
+	"beacon"
+	{
+		"en" "Beacon"
+	}
+
+	"laser"
+	{
+		"en" "Laser"
+	}
+
+	"beacon_use"
+	{
+		"en" "Bind +beacon to a button!"
+	}
+
+	"static"
+	{
+		"en" "Static"
+	}
+
+	"animated"
+	{
+		"en" "Animated"
+	}
+
+	"change_team"
+	{
+		"en" "Change Team"
+	}
+
+	"current_color"
+	{
+		"#format" "{1:s}"
+		"en" "Current Color: {1}"
+	}
+
+	"current_shark"
+	{
+		"#format" "{1:s}"
+		"en" "Current Shark: {1}"
+	}
+
+	"current_target"
+	{
+		"#format" "{1:s}"
+		"en" "Current Target: {1}"
+	}
+
+	"blind_ct"
+	{
+		"#format" "{1:s}"
+		"en" "Blind CT: {1}"
+	}
+
+	"use_e"
+	{
+		"en" "Use 'e' or +use"
+	}
+
+	"announce_team"
+	{
+		"#format" "{1:s}"
+		"en" "You've been assigned the team: {1}"
+	}
+
+	"randomize_teams"
+	{
+		"#format" "{1:i}"
+		"en" "Final Teams: {1}"
+	}
+
+	"randomize"
+	{
+		"en" "Randomize"
+	}
+
+	"randomize_pattern"
+	{
+		"#format" "{1:s}"
+		"en" "Color Pattern: {1}"
+	}
+
+	"fade"
+	{
+		"#format" "{1:s}"
+		"en" "Fade: {1}"
+	}
+
+	"friendly_fire"
+	{
+		"#format" "{1:s}"
+		"en" "Friendly Fire: {1}"
+	}
+
+	"announce_friendly_fire"
+	{
+		"#format" "{1:s}"
+		"en" "Friendly Fire has now been set to: {1}"
+	}
+
+	"start"
+	{
+		"en" "Start"
+	}
+
+	"stop"
+	{
+		"en" "Stop"
+	}
+
+	"off"
+	{
+		"en" "Off"
+	}
+
+	"team"
+	{
+		"en" "On (Team)"
+	}
+
+	"all"
+	{
+		"en" "On (All)"
+	}
+
+	"clear"
+	{
+		"en" "Clear"
+	}
+
+	"static"
+	{
+		"en" "Static"
+	}
+
+	"random"
+	{
+		"en" "Random"
+	}
+
+	"shark"
+	{
+		"en" "Shark"
+	}
+
+	"blind"
+	{
+		"en" "Blind"
+	}
+
+	"announce_shark"
+	{
+		"#format" "{1:s}"
+		"en" "Started Shark for: {1}"
+	}
+
+	"announce_blind"
+	{
+		"#format" "{1:s}"
+		"en" "Started Blind for: {1}"
+	}
+
+	"announce_freezejump"
+	{
+		"#format" "{1:s}"
+		"en" "Started FreezeJump"
+	}
+
+	"announce_force_stop"
+	{
+		"en" "The minigame has been forcefully stopped!"
+	}
+
+	"announce_stop"
+	{
+		"en" "The minigame has concluded!"
+	}
+
+	"current_duration"
+	{
+		"#format" "{1:s}"
+		"en" "Duration: {1}"
+	}
+
+	"change_shark"
+	{
+		"en" "Change Shark"
+	}
+
+	"change_target"
+	{
+		"en" "Change Target"
+	}
+
+	"announce_take_warden"
+	{
+		"#format" "{1:s}"
+		"en" "The Warden is now: {1}"
+	}
+
+	"announce_untake_warden"
+	{
+		"#format" "{1:s}"
+		"en" "The Warden is no longer: {1}"
+	}
+
+	"announce_no_warden"
+	{
+		"en" "There is currently no Warden!"
+	}
+
+	"announce_current_warden"
+	{
+		"#format" "{1:s}"
+		"en" "The Warden is currently: {1}"
+	}
+
+	"announce_fired"
+	{
+		"#format" "{1:s}"
+		"en" "Fired: {1}"
+	}
+
+	"announce_set_warden"
+	{
+		"#format" "{1:s}"
+		"en" "Set the Warden to: {1}"
+	}
+
+	"announce_currently_warden"
+	{
+		"en" "You are currently the Warden!"
+	}
+
+	"announce_unable_to_take"
+	{
+		"en" "You cannot currently be the Warden!"
+	}
+
+	"announce_unable_to_take_target"
+	{
+		"en" "This player cannot currently be the Warden!"
+	}
+
+	"announce_currently_not_warden"
+	{
+		"en" "You are currently not the Warden!"
+	}
+
+	"announce_already_taken"
+	{
+		"en" "Warden has already been taken!"
+	}
+
+	"miscellaneous"
+	{
+		"en" "Miscellaneous"
+	}
+
+	"minigames"
+	{
+		"en" "Minigames"
+	}
+
+	"red"
+	{
+		"en" "Red"
+	}
+
+	"green"
+	{
+		"en" "Green"
+	}
+
+	"blue"
+	{
+		"en" "Blue"
+	}
+
+	"purple"
+	{
+		"en" "Purple"
+	}
+
+	"pink"
+	{
+		"en" "Pink"
+	}
+
+	"white"
+	{
+		"en" "White"
+	}
+
+	"grey"
+	{
+		"en" "Grey"
+	}
+
+	"orange"
+	{
+		"en" "Orange"
+	}
+
+	"yellow"
+	{
+		"en" "Yellow"
+	}
+
+	"rainbow"
+	{
+		"en" "Rainbow"
+	}
+
+	"5sec"
+	{
+		"en" "5 Seconds"
+	}
+
+	"10sec"
+	{
+		"en" "10 Seconds"
+	}
+
+	"15sec"
+	{
+		"en" "15 Seconds"
+	}
+
+	"20sec"
+	{
+		"en" "20 Seconds"
+	}
+
+	"25sec"
+	{
+		"en" "25 Seconds"
+	}
+
+	"30sec"
+	{
+		"en" "30 Seconds"
+	}
+
+	"60sec"
+	{
+		"en" "1 Minute"
+	}
+
+	"infinite"
+	{
+		"en" "Infinite"
+	}
+
+	"yes"
+	{
+		"en" "Yes"
+	}
+
+	"no"
+	{
+		"en" "No"
+	}
+
+	"all_t"
+	{
+		"en" "All T's"
+	}
+
+	"heal_t"
+	{
+		"en" "Heal T's"
+	}
+
+	"announce_heal_t"
+	{
+		"en" "Set all T's health to 100"
+	}
+
+	"give_ta_grenade"
+	{
+		"en" "Receive a TA grenade"
+	}
+
+	"announce_ta_grenade"
+	{
+		"en" "Receieved a TA grenade"
+	}
+
+	"slap"
+	{
+		"en" "Slap"
+	}
+
+	"slap_5"
+	{
+		"en" "Slap 5 times"
+	}
+
+	"slap_10"
+	{
+		"en" "Slap 10 times"
+	}
+
+	"hungergames"
+	{
+		"en" "Hunger Games"
+	}
+
+	"specialdays"
+	{
+		"en" "Special Days"
+	}
+
+	"freezejump"
+	{
+		"en" "Freeze Jump"
+	}
+
+	"time_remaining"
+	{
+		"#format" "{1:i}"
+		"en" "Time Remaining: {1} Second(s)"
+	}
+}

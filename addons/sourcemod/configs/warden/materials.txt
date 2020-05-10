@@ -1,0 +1,14 @@
+materials/s/s_arkane
+materials/s/s_bubble
+materials/s/s_cloud
+materials/s/s_fire
+materials/s/s_flare
+materials/s/s_glow
+materials/s/s_greenleaf
+materials/s/s_lightning
+materials/s/s_planet
+materials/s/s_smoke
+materials/s/s_square
+materials/s/s_sun
+materials/effects/energysplash
+materials/effects/fire_cloud2
