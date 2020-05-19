@@ -122,3 +122,7 @@ public Action Command_Beacon(int client, int args) {
 
 	return Plugin_Handled;
 }
+
+public Action Command_None(int client, int args) {
+	return Plugin_Handled;
+}

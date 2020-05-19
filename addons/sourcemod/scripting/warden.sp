@@ -11,6 +11,7 @@
 #include <basecomm>
 #include <clientprefs>
 #include <cstrike>
+#include <voiceannounce_ex>
 
 #undef REQUIRE_PLUGIN
 #include <sourcecomms>
@@ -30,11 +31,21 @@ ArrayList g_AllowedPickup;
 bool g_SourceCommsEnabled;
 Cookie g_BeaconCookie;
 ConVar g_cFriendlyFire;
+ConVar g_cIgnoreRoundWin;
 UserMsg g_FadeUserMsgId;
 
 int m_flNextSecondaryAttack = -1;
 int g_roundStartedTime = -1;
 int g_offsCollisionGroup;
+int g_RoundsRemaining = 0;
+Handle g_HudSync;
+char g_FreezeSound[PLATFORM_MAX_PATH] = "physics/glass/glass_impact_bullet4.wav";
+char g_BeepSound[PLATFORM_MAX_PATH] = "buttons/button17.wav";
+
+char g_ZombieModel[PLATFORM_MAX_PATH] = "models/player/custom_player/kodua/frozen_nazi/frozen_nazi.mdl";
+char g_ZombieArms[PLATFORM_MAX_PATH] = "models/player/custom_player/kodua/frozen_nazi/arms.mdl";
+
+int g_MicCheck[MAXPLAYERS + 1];
 
 public Plugin myinfo = {
 	name = "Warden",
@@ -65,11 +76,11 @@ public void OnLibraryRemoved(const char[] name) {
 public void OnPluginStart() {
 	HookEvent("round_start", Hook_RoundStart);
 	HookEvent("round_end", Hook_RoundEnd);
-	HookEvent("player_death", Hook_PlayerDeath);
+	HookEvent("player_death", Hook_PlayerDeath, EventHookMode_Post);
 	HookEvent("player_spawn", Hook_PlayerSpawn);
 
 	RegConsoleCmd("+beacon", Command_Beacon);
-	RegConsoleCmd("-beacon", Command_Beacon);
+	RegConsoleCmd("-beacon", Command_None);
 
 	RegConsoleCmd("sm_w", Command_Warden, "Takes Warden if available CT, displays current Warden as T");
 	RegConsoleCmd("sm_uw", Command_UnWarden, "Gives up the Warden if you're currently the Warden");
@@ -78,14 +89,10 @@ public void OnPluginStart() {
 	RegAdminCmd("sm_rw", Command_ResetWarden, ADMFLAG_GENERIC, "Reset the Warden");
 	RegAdminCmd("sm_fw", Command_ForceWarden, ADMFLAG_GENERIC, "Forces a Player to be the Warden");
 
-	RegConsoleCmd("sm_test", Command_Test);
-
-	HookEvent("round_start", Hook_RoundStart);
-	HookEvent("round_end", Hook_RoundEnd);
-
 	LoadTranslations("common.phrases");
 	LoadTranslations("warden.phrases");
 	CreateTimer(0.1, Timer_Main, _, TIMER_REPEAT);
+	CreateTimer(1.0, Timer_Second, _, TIMER_REPEAT);
 
 	ClearTeams();
 
@@ -96,10 +103,12 @@ public void OnPluginStart() {
 	g_BeaconCookie = new Cookie("warden_beacon", "Saves	 the preference for beacon", CookieAccess_Protected);
 	g_FadeUserMsgId = GetUserMessageId("Fade");
 	g_cFriendlyFire = FindConVar("mp_friendlyfire");
+	g_cIgnoreRoundWin = FindConVar("mp_ignore_round_win_conditions");
 	g_cFriendlyFire.SetBool(true, false, false);
 	g_cFriendlyFire.AddChangeHook(Hook_ConVar);
 	m_flNextSecondaryAttack = FindSendPropInfo("CBaseCombatWeapon", "m_flNextSecondaryAttack");
 	g_offsCollisionGroup = FindSendPropInfo("CBaseEntity", "m_CollisionGroup");
+	g_HudSync = CreateHudSynchronizer();
 
 	for (int i = 1; i <= MaxClients; i++) {
 		if (!IsValidPlayer(i)) continue;
@@ -107,22 +116,26 @@ public void OnPluginStart() {
 
 		g_BeaconCookie.Get(i, cookie, 4);
 		g_Players[i].BeaconPref = StringToInt(cookie);
-		SDKHook(i, SDKHook_OnTakeDamage, Hook_OnTakeDamage);
+		SDKHook(i, SDKHook_OnTakeDamageAlive, Hook_OnTakeDamage);
 		SDKHook(i, SDKHook_WeaponCanUse, Hook_WeaponCanUse);
 		SDKHook(i, SDKHook_SetTransmit, Hook_SetTransmit);
 		SDKHook(i, SDKHook_PreThink, Hook_PreThink);
+		SDKHook(i, SDKHook_WeaponDrop, Hook_WeaponDrop);
 	}
+
+	ServerCommand("mp_restartgame 1");
+
+	RegConsoleCmd("sm_test", command_test);
+}
+
+public Action command_test(int client, int args) {
+	int throwable = GivePlayerItem(client, "weapon_flashbang");
+	EquipPlayerWeapon(client, throwable);
 }
 
 public Action Hook_PlayerSpawn(Event event, const char[] name, bool bDontBroadcast) {
 	int client = GetClientOfUserId(event.GetInt("userid"));
 	SetEntData(client, g_offsCollisionGroup, 2, 4, true);
-}
-
-public Action Command_Test(int client, int args) {
-	StartHungerGames();
-
-	return Plugin_Handled;
 }
 
 void Hook_ConVar(ConVar convar, const char[] oldValue, const char[] newValue) {
@@ -134,13 +147,13 @@ public void OnMapStart() {
 	char[] path = new char[PLATFORM_MAX_PATH];
 	BuildPath(Path_SM, path, PLATFORM_MAX_PATH, "configs/warden/materials.txt");
 
-	if (FileExists(path)) {
-		File materials = OpenFile(path, "r");
+	if (!FileExists(path)) SetFailState("Cannot find materials.txt");
+	File materials = OpenFile(path, "r");
 
-		while (!materials.EndOfFile()) {
-			materials.ReadLine(buffer, 512);
-			PrecacheMaterial(buffer);
-		}
+	while (!materials.EndOfFile()) {
+		materials.ReadLine(buffer, 512);
+		TrimString(buffer);
+		PrecacheMaterial(buffer);
 	}
 
 	BuildPath(Path_SM, path, PLATFORM_MAX_PATH, "configs/warden/beacons.cfg");
@@ -169,6 +182,10 @@ public void OnMapStart() {
 	PrecacheGeneric(PARTICLE_PATH, true);
 	PrecacheParticleEffect(PARTICLE_PATH);
 	PrecacheEffect();
+	
+	PrecacheSound(g_FreezeSound, true);
+	PrecacheSound(g_BeepSound, true);
+	PrecacheModel(g_ZombieModel);
 }
 
 public void OnClientCookiesCached(int client) {
@@ -179,25 +196,37 @@ public void OnClientCookiesCached(int client) {
 }
 
 public void OnClientPostAdminCheck(int client) {
-	SDKHook(client, SDKHook_OnTakeDamage, Hook_OnTakeDamage);
+	SDKHook(client, SDKHook_OnTakeDamageAlive, Hook_OnTakeDamage);
 	SDKHook(client, SDKHook_WeaponCanUse, Hook_WeaponCanUse);
 	SDKHook(client, SDKHook_SetTransmit, Hook_SetTransmit);
 	SDKHook(client, SDKHook_PreThink, Hook_PreThink);
+	SDKHook(client, SDKHook_WeaponDrop, Hook_WeaponDrop);
 }
 
 public void OnClientDisconnect(int client) {
-	SDKUnhook(client, SDKHook_OnTakeDamage, Hook_OnTakeDamage);
+	SDKUnhook(client, SDKHook_OnTakeDamageAlive, Hook_OnTakeDamage);
 	SDKUnhook(client, SDKHook_WeaponCanUse, Hook_WeaponCanUse);
 	SDKUnhook(client, SDKHook_SetTransmit, Hook_SetTransmit);
 	SDKUnhook(client, SDKHook_PreThink, Hook_PreThink);
+	SDKUnhook(client, SDKHook_WeaponDrop, Hook_WeaponDrop);
 }
 
 public Action Hook_WeaponCanUse(int client, int weapon) {
 	switch (g_Spec.Type) {
-		case SpecialDay_Chamber: return Plugin_Handled;
+		case SpecialDay_Scout, SpecialDay_Chamber, SpecialDay_Flash, SpecialDay_Grenade: return Plugin_Handled;
 		case SpecialDay_HungerGames: {
 			if (g_AllowedPickup.FindValue(weapon) == -1) return Plugin_Handled;
+		} case SpecialDay_Zombie: {
+			if (client == g_Warden.Id) return Plugin_Handled;
 		}
+	}
+
+	return Plugin_Continue;
+}
+
+public Action Hook_WeaponDrop(int client, int weapon) {
+	switch (g_Spec.Type) {
+		case SpecialDay_Scout, SpecialDay_Chamber: return Plugin_Handled;
 	}
 
 	return Plugin_Continue;
@@ -217,6 +246,10 @@ public Action Hook_OnTakeDamage(int victim, int& attacker, int& inflictor, float
 				return Plugin_Changed;
 			} case SpecialDay_TDM: {
 				if (g_Players[victim].Team == g_Players[attacker].Team) return Plugin_Handled;
+			} case SpecialDay_War, SpecialDay_Hide: {
+				if (victimTeam == attackerTeam) return Plugin_Handled;
+			} case SpecialDay_Zombie: {
+				if (victim != g_Warden.Id) return Plugin_Handled;
 			}
 		}
 	} else {
@@ -244,14 +277,14 @@ public Action Hook_SetTransmit(int entity, int client) {
 }
 
 public Action Hook_PreThink(int client) {
-	if (g_Spec.Type == SpecialDay_AWP) {
+	if (g_Spec.Type == SpecialDay_Scout) {
 		int weapon = GetEntPropEnt(client, Prop_Send, "m_hActiveWeapon");
 		if (!IsValidEdict(weapon)) return Plugin_Continue;
 
 		char classname[MAX_NAME_LENGTH];
 		GetEdictClassname(weapon, classname, sizeof(classname));
 
-		if (StrEqual(classname[7], "awp")) SetEntDataFloat(weapon, m_flNextSecondaryAttack, GetGameTime() + 2.0);
+		if (StrEqual(classname[7], "ssg08")) SetEntDataFloat(weapon, m_flNextSecondaryAttack, GetGameTime() + 2.0);
 	}
 
 	return Plugin_Continue;
@@ -308,23 +341,44 @@ public Action Hook_RoundEnd(Event event, const char[] name, bool dontBroadcast) 
 	for (int i = 1; i <= MaxClients; i++) {
 		if (!IsValidPlayer(i)) continue;
 		ChangeComm(i, false);
+
+		if (!IsPlayerAlive(i)) continue;
+		SetEntityGravity(i, 1.0);
 	}
 
+	if (g_RoundsRemaining > 0) g_RoundsRemaining--;
 	g_Warden.CurrentTime = 0;
 	g_Warden.EndTime = 0;
 	g_Warden.Minigame = Minigame_None;
+	g_cIgnoreRoundWin.SetInt(0);
 }
 
 public Action Hook_PlayerDeath(Event event, const char[] name, bool dontBroadcast) {
 	int client = GetClientOfUserId(event.GetInt("userid"));
 	if (g_Warden.Id == client) UnsetWarden(true);
 
-	if (g_Spec.Type == SpecialDay_Chamber) {
+	if (g_Spec.Type != SpecialDay_None) {
 		int attacker = GetClientOfUserId(event.GetInt("attacker"));
+		if (!IsValidPlayer(attacker)) return;
+		g_Players[attacker].Kills++;
 
-		if (IsValidPlayer(attacker)) {
+		if (g_Spec.Type == SpecialDay_Chamber) {
 			int weapon = GetPlayerWeaponSlot(attacker, 1);
-			if (weapon != -1) SetEntProp(weapon, Prop_Send, "m_iPrimaryReserveAmmoCount", 1);	
+			if (weapon != -1) SetEntProp(weapon, Prop_Send, "m_iPrimaryReserveAmmoCount", GetEntProp(weapon, Prop_Send, "m_iPrimaryReserveAmmoCount") + 1);
+		}
+		
+		bool forceEndRound = true;
+		for (int i = 1; i <= MaxClients; i++) {
+			if (!IsValidPlayer(i)) continue;
+			if (!IsPlayerAlive(i)) continue;
+			if (i != attacker) forceEndRound = false;
+		}
+
+		if (forceEndRound) {
+			g_cIgnoreRoundWin.SetInt(0);
+
+			Event end = CreateEvent("round_end", true);
+			end.Fire(true);
 		}
 	}
 }
@@ -398,6 +452,10 @@ Action Timer_Main(Handle timer, any data) {
 					if (!IsPlayerAlive(i)) continue;
 					if (GetClientTeam(i) != 2) continue;
 					SetEntityMoveType(i, MOVETYPE_WALK);
+
+					float pos[3];
+					GetClientEyePosition(i, pos);
+					EmitAmbientSound(g_FreezeSound, pos, i, SNDLEVEL_RAIDSIREN);
 				}
 
 				if (g_Warden.Tool == WardenTool_FreezeJump) Menu_FreezeJump();
@@ -418,6 +476,10 @@ Action Timer_Main(Handle timer, any data) {
 					if (!IsValidPlayer(i)) continue;
 					if (!IsPlayerAlive(i)) continue;
 					if (GetClientTeam(i) != 2) continue;
+
+					float pos[3];
+					GetClientEyePosition(i, pos);
+					EmitAmbientSound(g_FreezeSound, pos, i, SNDLEVEL_RAIDSIREN);
 
 					SetEntityMoveType(i, MOVETYPE_NONE);
 
@@ -445,6 +507,18 @@ Action Timer_Main(Handle timer, any data) {
 		switch (timeRemaining) {
 			case 10, 20, 30, 40, 50, 150, 300: {
 				PrintToChatAll("%s%t", PLUGIN_PREFIX, "time_remaining", timeRemaining / 10);
+
+				if (g_Warden.Minigame == Minigame_FreezeJump) {
+					for (int i = 1; i <= MaxClients; i++) {
+						if (!IsValidPlayer(i)) continue;
+						if (!IsPlayerAlive(i)) continue;
+						if (GetClientTeam(i) != 2) continue;
+
+						float pos[3];
+						GetClientEyePosition(i, pos);
+						EmitAmbientSound(g_BeepSound, pos, i, SNDLEVEL_RAIDSIREN);
+					}
+				}
 			}
 		}
 	}
@@ -455,6 +529,22 @@ Action Timer_Main(Handle timer, any data) {
 		if (g_Players[i].SlapsRemaining == 0) continue;
 		g_Players[i].SlapsRemaining--;
 		SlapPlayer(i, 0);
+	}
+
+	if (g_Spec.Type == SpecialDay_Flash) {
+		for (int i = 1; i <= MaxClients; i++) {
+			if (!IsValidPlayer(i)) continue;
+			if (!IsPlayerAlive(i)) continue;
+
+			SetEntProp(i, Prop_Send, "m_iHealth", 1);
+		}
+	} else if (g_Spec.Type == SpecialDay_Grenade) {
+		for (int i = 1; i <= MaxClients; i++) {
+			if (!IsValidPlayer(i)) continue;
+			if (!IsPlayerAlive(i)) continue;
+
+			if (GetEntProp(i, Prop_Send, "m_iHealth") > 20) SetEntProp(i, Prop_Send, "m_iHealth", 20);
+		}
 	}
 }
 
@@ -691,7 +781,7 @@ void GiveAwarenessGrenade() {
 	g_Warden.Grenade = true;
 	GivePlayerItem(g_Warden.Id, "weapon_tagrenade");
 
-	PrintToChatAll("%s%t", PLUGIN_PREFIX, "announce_ta_grenade");
+	PrintToChat(g_Warden.Id, "%s%t", PLUGIN_PREFIX, "announce_ta_grenade");
 }
 
 void AddSlaps(int amount) {
@@ -716,6 +806,11 @@ void PrioritySpeakerChange() {
 		if (GetClientTeam(i) != 2) continue;
 		ChangeComm(i, g_Warden.PrioritySpeaker);
 	}
+}
+
+void PrecacheMaterial(char[] fileName) {
+	AddFileToDownloadsTable(fileName);
+	PrecacheGeneric(fileName);
 }
 
 #include "wardentools/commands.sp"

@@ -40,7 +40,7 @@ void Menu_WardenTools() {
 	menu.AddItem("", buffer);
 
 	FormatEx(buffer, 512, "%T", "specialdays", g_Warden.Id);
-	menu.AddItem("", buffer);
+	menu.AddItem("", buffer, g_RoundsRemaining == 0 ? ITEMDRAW_DEFAULT : ITEMDRAW_DISABLED);
 
 	menu.Display(g_Warden.Id, 0);
 }
@@ -68,6 +68,9 @@ void Menu_Miscellaneous() {
 
 	FormatEx(buffer, 512, "%T - %T\n ", "warden_tools", g_Warden.Id, "miscellaneous", g_Warden.Id);
 	menu.SetTitle(buffer);
+
+	FormatEx(buffer, 512, "Mic Check");
+	menu.AddItem("", buffer);
 
 	FormatEx(buffer, 512, "%T", "team_picker", g_Warden.Id);
 	menu.AddItem("", buffer);
@@ -97,14 +100,48 @@ int Menu_MiscellaneousCallback(Menu menu, MenuAction action, int param1, int par
 
 	if (action == MenuAction_Select) {
 		switch (param2) {
-			case 0: Menu_TeamPicker();
-			case 1: Menu_Beacon();
-			case 2: Menu_Laser();
-			case 3: HealT();
-			case 4: GiveAwarenessGrenade();
+			case 0: MicCheck();
+			case 1: Menu_TeamPicker();
+			case 2: Menu_Beacon();
+			case 3: Menu_Laser();
+			case 4: HealT();
+			case 5: GiveAwarenessGrenade();
+			
 		}
 
 		if (param2 > 2) Menu_Miscellaneous();
+	}
+}
+
+void MicCheck() {
+	for (int i = 1; i <= MaxClients; i++) {
+		if (!IsValidPlayer(i)) continue;
+		if (GetClientTeam(i) != 3) continue;
+		if (!IsPlayerAlive(i)) CS_RespawnPlayer(i);
+		ChangeComm(i, false);
+		g_MicCheck[i] = true;
+
+		PrintToChat(i, "%s\x07MIC CHECK MIC CHECK, USE YOUR MICROPHONE TO NOT GET SWAPPED", PLUGIN_PREFIX);
+	}
+
+	CreateTimer(7.0, Timer_MicCheck);
+}
+
+public Action Timer_MicCheck(Handle timer, any data) {
+	for (int i = 1; i <= MaxClients; i++) {
+		if (!IsValidPlayer(i)) continue;
+		if (GetClientTeam(i) != 3) continue;
+		if (!g_MicCheck[i]) continue;
+
+		CS_SwitchTeam(i, 2);
+		PrintToChat(i, "%s\x07YOU HAVE BEEN SWAPPED FOR NO MIC", PLUGIN_PREFIX);
+	}
+}
+
+public void OnClientSpeakingEx(int client) {
+	if (g_MicCheck[client]) {
+		PrintToChat(client, "%s\x06ALL GOOD!", PLUGIN_PREFIX);
+		g_MicCheck[client] = false;
 	}
 }
 

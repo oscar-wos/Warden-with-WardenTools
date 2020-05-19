@@ -18,11 +18,27 @@ enum {
 	SpecialDay_Chamber,
 	SpecialDay_TDM,
 	SpecialDay_FFA,
-	SpecialDay_AWP,
+	SpecialDay_Scout,
 	SpecialDay_War,
 	SpecialDay_Hide,
+	SpecialDay_Flash,
+	SpecialDay_Grenade,
+	SpecialDay_Zombie,
 	SpecialDay_Custom
 }
+
+int gI_DayTimes[] = {
+	20,
+	15,
+	20,
+	15,
+	20,
+	10,
+	30,
+	15,
+	15,
+	25
+};
 
 enum {
 	Minigame_None = 0,
@@ -59,6 +75,7 @@ enum struct SpecialDay {
 	int Type;
 	bool Invisibility;
 	bool Invulnerability;
+	int Seconds;
 }
 
 enum struct Warden {
@@ -109,41 +126,43 @@ enum struct Laser {
 	int Color;
 }
 
-char gC_Weapons[][][] = {
-	{"weapon_knife", "Knife", "2", "0"},
-	{"weapon_ak47", "AK-47", "0", "7"},
-	{"weapon_aug", "AUG", "0", "8"},
-	{"weapon_awp", "AWP", "0", "9"},
-	{"weapon_bizon", "PP-Bizon", "0", "26"},
-	{"weapon_cz75a", "CZ-75 Auto", "1", "63"},
-	{"weapon_deagle", "Desert Eagle", "1", "1"},
-	{"weapon_elite", "Dual Berettas", "1", "2"},
-	{"weapon_famas", "FAMAS", "0", "10"},
-	{"weapon_fiveseven", "Five-SeveN", "1", "3"},
-	{"weapon_g3sg1", "G3SG1", "0", "11"},
-	{"weapon_galilar", "Galil AR", "0", "13"},
-	{"weapon_glock", "Glock-18", "1", "4"},
-	{"weapon_hkp2000", "P2000", "1", "32"},
-	{"weapon_m249", "M249", "0", "14"},
-	{"weapon_m4a1", "M4A4", "0", "16"},
-	{"weapon_m4a1_silencer", "M4A1-S", "0", "60"},
-	{"weapon_mac10", "MAC-10", "0", "17"},
-	{"weapon_mag7", "MAG-7", "0", "27"},
-	{"weapon_mp7", "MP7", "0", "33"},
-	{"weapon_mp9", "MP9", "0", "34"},
-	{"weapon_negev", "Negev", "0", "28"},
-	{"weapon_nova", "Nova", "0", "35"},
-	{"weapon_p250", "P250", "1", "36"},
-	{"weapon_p90", "P90", "0", "19"},
-	{"weapon_sawedoff", "Sawed-Off", "0", "29"},
-	{"weapon_scar20", "SCAR-20", "0", "38"},
-	{"weapon_sg556", "SG 553", "0", "39"},
-	{"weapon_ssg08", "SSG 08", "0", "40"},
-	{"weapon_tec9", "Tec-9", "1", "30"},
-	{"weapon_ump45", "UMP-45", "0", "24"},
-	{"weapon_usp_silencer", "USP-S", "1", "61"},
-	{"weapon_xm1014", "XM1014", "0", "25"},
-	{"weapon_revolver", "R8 Revolver", "1", "64"},
+char gC_Primary[][] = {
+	"weapon_ak47",
+	"weapon_aug",
+	"weapon_awp",
+	"weapon_bizon",
+	"weapon_famas",
+	"weapon_g3sg1",
+	"weapon_galilar",
+	"weapon_m249",
+	"weapon_m4a1",
+	"weapon_m4a1_silencer",
+	"weapon_mac10",
+	"weapon_mag7",
+	"weapon_mp7",
+	"weapon_mp9",
+	"weapon_negev",
+	"weapon_nova",
+	"weapon_p90",
+	"weapon_sawedoff",
+	"weapon_scar20",
+	"weapon_sg556",
+	"weapon_ssg08",
+	"weapon_ump45",
+	"weapon_xm1014"
+};
+
+char gC_Secondary[][] = {
+	"weapon_cz75a",
+	"weapon_deagle",
+	"weapon_elite",
+	"weapon_fiveseven",
+	"weapon_glock",
+	"weapon_hkp2000",
+	"weapon_p250",
+	"weapon_tec9",
+	"weapon_usp_silencer",
+	"weapon_revolver"
 };
 
 int g_Colors[][4] = {
@@ -174,11 +193,11 @@ char g_BeaconTimeNames[][] = {
 	"25sec"
 };
 
-int g_LaserTimes[] = {
-	50,
-	150,
-	600,
-	0
+float g_LaserTimes[] = {
+	5.0,
+	15.0,
+	60.0,
+	0.0
 };
 
 char g_LaserTimeNames[][] = {
@@ -291,21 +310,6 @@ stock int CreatePlayerModelProp(int client, const char[] model) {
 	SetVariantString("primary");
 	AcceptEntityInput(skin, "SetParentAttachment", skin, skin, 0);
 	return skin;
-}
-
-stock void PrecacheMaterial(char[] fileName) {
-	static char materialEndings[][] = {
-		".vmt",
-		".vtf"
-	};
-
-	char[] buffer = new char[512];
-
-	for (int i = 0; i < sizeof(materialEndings); i++) {
-		FormatEx(buffer, 512, "%s%s", fileName, materialEndings[i]);
-		AddFileToDownloadsTable(buffer);
-		PrecacheGeneric(buffer);
-	}
 }
 
 stock void PrecacheParticleEffect(const char[] effectName) {
