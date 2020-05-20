@@ -95,9 +95,9 @@ void Days_Start() {
 		case SpecialDay_FFA: { BlindFreeze(); RandomizeTeams(4, true, true); }
 		case SpecialDay_Scout: { BlindFreeze(); ClearPlayerWeapons(true); }
 		case SpecialDay_War: BlindFreeze(2);
-		case SpecialDay_Hide: { BlindFreeze(3); ClearPlayerWeapons(true); }
+		case SpecialDay_Hide: { BlindFreeze(); ClearPlayerWeapons(true); }
 		case SpecialDay_Flash: { BlindFreeze(); ClearPlayerWeapons(true); }
-		case SpecialDay_Zombie: { BlindFreeze(); ClearPlayerWeapon(g_Warden.Id, false); }
+		case SpecialDay_Zombie: { BlindFreeze(); }
 		case SpecialDay_Grenade: { BlindFreeze(); ClearPlayerWeapons(true); }
 	}
 
@@ -172,41 +172,50 @@ public Action Timer_Second(Handle timer, any data) {
 }
 
 void Day_Zombie() {
-	float pos[3];
-
 	switch (g_Spec.Seconds) {
-		case 10: PrintToChatAll("[Zombie] Zombie will be unfrozen in 10 Seconds!");
-		case 5: PrintToChatAll("[Zombie] Zombie will be unfrozen in 5 Seconds!");
-		case 0: PrintToChatAll("[Zombie] Zombie has been unfronze, good luck!");
+		case 10: PrintToChatAll("[Zombie] Zombie will be picked in 10 Seconds!");
+		case 5: PrintToChatAll("[Zombie] Zombie will be picked in 5 Seconds!");
+		case 0: PrintToChatAll("[Zombie] Zombie has been picked, good luck!");
 	}
 
-	if (g_Spec.Seconds == (gI_DayTimes[g_Spec.Type - 1] - 3)) {
-		for (int i = 1; i <= MaxClients; i++) {
-			if (!IsValidPlayer(i) || !IsPlayerAlive(i)) continue;
-			if (i == g_Warden.Id) continue;
-			PerformBlind(i, 0);
-
-			if (GetEntityMoveType(i) == MOVETYPE_NONE) {
-				GetClientEyePosition(i, pos);
-				SetEntityMoveType(i, MOVETYPE_WALK);
-				EmitAmbientSound(g_FreezeSound, pos, i, SNDLEVEL_RAIDSIREN);
-			}
-		}
-
-		SetEntityModel(g_Warden.Id, g_ZombieModel); 
-		SetEntPropString (g_Warden.Id, Prop_Send, "m_szArmsModel", g_ZombieArms); 
-	}
+	if (g_Spec.Seconds == (gI_DayTimes[g_Spec.Type - 1] - 3)) Unfreeze();
 
 	if (g_Spec.Seconds == 0) {
-		GetClientEyePosition(g_Warden.Id, pos);
-		SetEntityMoveType(g_Warden.Id, MOVETYPE_WALK);
-		EmitAmbientSound(g_FreezeSound, pos, g_Warden.Id, SNDLEVEL_RAIDSIREN);
+		int zombie = GetRandomAlivePerson();
 
-		SetEntPropFloat(g_Warden.Id, Prop_Send, "m_flLaggedMovementValue", 2.0);
-		SetEntProp(g_Warden.Id, Prop_Send, "m_iHealth", 20000);
-
-		PerformBlind(g_Warden.Id, 0);
+		if (zombie != -1) SetZombie(zombie, false);
+		PrintToChatAll("[Zombie] %N is now the zombie", zombie);
 	}
+}
+
+int GetRandomAlivePerson() {
+	int[] validPlayers = new int[MaxClients];
+	int totalPlayers;
+
+	for (int i = 1; i <= MaxClients; i++) {
+		if (!IsValidPlayer(i) || !IsPlayerAlive(i)) continue;
+		validPlayers[totalPlayers] = i;
+		totalPlayers++;
+	}
+	
+	if (totalPlayers > 0) return validPlayers[GetRandomInt(0, totalPlayers - 1)];
+	else return -1;
+}
+
+void SetZombie(int client, bool announce = true) {
+	g_Players[client].Zombie = true;
+	RequestFrame(Frame_SetZombie, client);
+
+	if (announce) PrintToChat(client, "[Zombie] You are now a Zombie!");
+}
+
+void Frame_SetZombie(int client) {
+	SetEntityModel(client, g_ZombieModel);
+	SetEntPropString(client, Prop_Send, "m_szArmsModel", g_ZombieArms);
+	SetEntPropFloat(client, Prop_Send, "m_flLaggedMovementValue", 1.2);
+	SetEntProp(client, Prop_Send, "m_iHealth", 25000);
+
+	ClearPlayerWeapon(client, false);
 }
 
 void Day_HungerGame() {

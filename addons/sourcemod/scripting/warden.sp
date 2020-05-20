@@ -46,6 +46,7 @@ char g_ZombieModel[PLATFORM_MAX_PATH] = "models/player/custom_player/kodua/froze
 char g_ZombieArms[PLATFORM_MAX_PATH] = "models/player/custom_player/kodua/frozen_nazi/arms.mdl";
 
 int g_MicCheck[MAXPLAYERS + 1];
+UserMsg g_TextMsg;
 
 public Plugin myinfo = {
 	name = "Warden",
@@ -94,6 +95,9 @@ public void OnPluginStart() {
 	CreateTimer(0.1, Timer_Main, _, TIMER_REPEAT);
 	CreateTimer(1.0, Timer_Second, _, TIMER_REPEAT);
 
+	g_TextMsg = GetUserMessageId("TextMsg");
+	HookUserMessage(g_TextMsg, Hook_TextMsg, true);
+
 	ClearTeams();
 
 	g_Beacons = new ArrayList(sizeof(Beacon));
@@ -127,6 +131,8 @@ public void OnPluginStart() {
 
 	RegConsoleCmd("sm_test", command_test);
 }
+
+public Action Hook_TextMsg(UserMsg msg_id, )
 
 public Action command_test(int client, int args) {
 	int throwable = GivePlayerItem(client, "weapon_flashbang");
@@ -186,6 +192,7 @@ public void OnMapStart() {
 	PrecacheSound(g_FreezeSound, true);
 	PrecacheSound(g_BeepSound, true);
 	PrecacheModel(g_ZombieModel);
+	PrecacheModel(g_ZombieArms);
 }
 
 public void OnClientCookiesCached(int client) {
@@ -217,7 +224,7 @@ public Action Hook_WeaponCanUse(int client, int weapon) {
 		case SpecialDay_HungerGames: {
 			if (g_AllowedPickup.FindValue(weapon) == -1) return Plugin_Handled;
 		} case SpecialDay_Zombie: {
-			if (client == g_Warden.Id) return Plugin_Handled;
+			if (g_Players[client].Zombie) return Plugin_Handled;
 		}
 	}
 
@@ -249,7 +256,25 @@ public Action Hook_OnTakeDamage(int victim, int& attacker, int& inflictor, float
 			} case SpecialDay_War, SpecialDay_Hide: {
 				if (victimTeam == attackerTeam) return Plugin_Handled;
 			} case SpecialDay_Zombie: {
-				if (victim != g_Warden.Id) return Plugin_Handled;
+				if (g_Players[victim].Zombie == g_Players[attacker].Zombie) return Plugin_Handled;
+				if (g_Players[attacker].Zombie) {
+					bool forceEndRound = true;
+					SetZombie(victim);
+
+					for (int i = 1; i <= MaxClients; i++) {
+						if (!IsValidPlayer(i) || !IsPlayerAlive(i)) continue;
+						if (!g_Players[i].Zombie) forceEndRound = false;
+					}
+
+					if (forceEndRound) {
+						g_cIgnoreRoundWin.SetInt(0);
+
+						Event end = CreateEvent("round_end", true);
+						end.Fire(true);
+					}
+
+					return Plugin_Changed;
+				}
 			}
 		}
 	} else {
@@ -366,14 +391,15 @@ public Action Hook_PlayerDeath(Event event, const char[] name, bool dontBroadcas
 			int weapon = GetPlayerWeaponSlot(attacker, 1);
 			if (weapon != -1) SetEntProp(weapon, Prop_Send, "m_iPrimaryReserveAmmoCount", GetEntProp(weapon, Prop_Send, "m_iPrimaryReserveAmmoCount") + 1);
 		}
-		
+
 		bool forceEndRound = true;
+		int playersAlive;
 		for (int i = 1; i <= MaxClients; i++) {
-			if (!IsValidPlayer(i)) continue;
-			if (!IsPlayerAlive(i)) continue;
-			if (i != attacker) forceEndRound = false;
+			if (!IsValidPlayer(i) || !IsPlayerAlive(i)) continue;
+			playersAlive++;
 		}
 
+		if (playersAlive > 1) forceEndRound = false;
 		if (forceEndRound) {
 			g_cIgnoreRoundWin.SetInt(0);
 

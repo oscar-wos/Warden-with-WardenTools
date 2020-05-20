@@ -31,13 +31,13 @@ int gI_DayTimes[] = {
 	20,
 	15,
 	20,
-	15,
+	30,
 	20,
 	10,
 	30,
 	15,
 	15,
-	25
+	15
 };
 
 enum {
@@ -66,6 +66,7 @@ enum struct Player {
 
 	int BeaconPref;
 	int Kills;
+	bool Zombie;
 }
 
 enum struct SpecialDay {
