@@ -435,12 +435,6 @@ void ClearPlayerWeapon(int client, bool removeKnife = true) {
 	for (int i = 0; i < 4; i++) {
 		int grenade = GetPlayerWeaponSlot(client, CS_SLOT_GRENADE);
 		if (grenade != -1) RemovePlayerItem(client, grenade);
-
-		int boost = GetPlayerWeaponSlot(client, CS_SLOT_BOOST);
-		if (boost != -1) RemovePlayerItem(client, boost);
-
-		int utility = GetPlayerWeaponSlot(client, CS_SLOT_UTILITY);
-		if (utility != -1) RemovePlayerItem(client, utility);
 	}
 }
 

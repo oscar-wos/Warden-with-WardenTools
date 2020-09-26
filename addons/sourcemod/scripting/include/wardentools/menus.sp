@@ -138,7 +138,7 @@ public Action Timer_MicCheck(Handle timer, any data) {
 	}
 }
 
-public void OnClientSpeakingEx(int client) {
+public void OnClientSpeaking(int client) {
 	if (g_MicCheck[client]) {
 		PrintToChat(client, "%s\x06ALL GOOD!", PLUGIN_PREFIX);
 		g_MicCheck[client] = false;

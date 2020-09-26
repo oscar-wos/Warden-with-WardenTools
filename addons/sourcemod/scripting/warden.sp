@@ -11,7 +11,6 @@
 #include <basecomm>
 #include <clientprefs>
 #include <cstrike>
-#include <voiceannounce_ex>
 
 #undef REQUIRE_PLUGIN
 #include <sourcecomms>
@@ -46,7 +45,6 @@ char g_ZombieModel[PLATFORM_MAX_PATH] = "models/player/custom_player/kodua/froze
 char g_ZombieArms[PLATFORM_MAX_PATH] = "models/player/custom_player/kodua/frozen_nazi/arms.mdl";
 
 int g_MicCheck[MAXPLAYERS + 1];
-UserMsg g_TextMsg;
 
 public Plugin myinfo = {
 	name = "Warden",
@@ -95,9 +93,6 @@ public void OnPluginStart() {
 	CreateTimer(0.1, Timer_Main, _, TIMER_REPEAT);
 	CreateTimer(1.0, Timer_Second, _, TIMER_REPEAT);
 
-	g_TextMsg = GetUserMessageId("TextMsg");
-	HookUserMessage(g_TextMsg, Hook_TextMsg, true);
-
 	ClearTeams();
 
 	g_Beacons = new ArrayList(sizeof(Beacon));
@@ -131,8 +126,6 @@ public void OnPluginStart() {
 
 	RegConsoleCmd("sm_test", command_test);
 }
-
-public Action Hook_TextMsg(UserMsg msg_id, )
 
 public Action command_test(int client, int args) {
 	int throwable = GivePlayerItem(client, "weapon_flashbang");
@@ -449,7 +442,7 @@ Action Timer_Main(Handle timer, any data) {
 		if (g_LaserTimes[g_Warden.LaserEndOption] != 0.0) {
 			laser.End = gameTime + g_LaserTimes[g_Warden.LaserEndOption];
 		}
-
+		
 		laser.Color = g_Warden.LaserColor;
 		g_Lasers.PushArray(laser);
 	}
